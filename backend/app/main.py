@@ -21,8 +21,8 @@ from app.routes import document_routes, chat_routes, dashboard_routes, auth_rout
 # Initialize logger
 logger = logging.getLogger(__name__)
 
-# Enable debug mode for detailed tracebacks
-app = FastAPI(title="RAGify AI Backend", debug=True)
+# FastAPI app instance
+app = FastAPI(title="RAGify AI Backend", debug=settings.DEBUG)
 
 def get_cors_origins():
     origins = set()
@@ -32,9 +32,6 @@ def get_cors_origins():
             cleaned = item.strip().rstrip("/")
             if cleaned:
                 origins.add(cleaned)
-    origins.add("http://localhost:5173")
-    origins.add("http://localhost:3000")
-    origins.add("http://127.0.0.1:5173")
     return list(origins)
 
 # CORS config
@@ -67,7 +64,9 @@ async def root():
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "db": "connected"}
+    db = get_db()
+    db_status = "connected" if db is not None else "disconnected"
+    return {"status": "ok", "db": db_status}
 
 app.include_router(document_routes.router, prefix="/api")
 app.include_router(chat_routes.router, prefix="/api")

@@ -16,6 +16,9 @@ class DocumentResponse(BaseModel):
     
     @classmethod
     def from_mongo(cls, doc: dict):
+        created_at = doc.get("created_at")
+        if not isinstance(created_at, datetime):
+            created_at = datetime.utcnow()
         return cls(
             id=str(doc["_id"]),
             user_id=str(doc["user_id"]),
@@ -26,5 +29,5 @@ class DocumentResponse(BaseModel):
             website_url=doc.get("website_url"),
             chunk_count=doc.get("chunk_count", 0),
             status=doc.get("status", "processing"),
-            created_at=doc.get("created_at")
+            created_at=created_at
         )

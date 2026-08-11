@@ -108,17 +108,30 @@ async def list_documents(current_user: dict = Depends(get_current_user)):
 
 @router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document(document_id: str, current_user: dict = Depends(get_current_user)):
-    # Fix 3: validate the ObjectId format first so we can return 400 for a
-    # malformed ID without masking the 404 that follows from a valid-but-wrong-user ID.
     try:
         object_id = ObjectId(document_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid document ID format.")
 
     db = get_db()
-    doc = await db.documents.find_one({"_id": object_id, "user_id": current_user['id']})
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database connection unavailable")
+
+    try:
+        doc = await asyncio.wait_for(
+            db.documents.find_one({"_id": object_id, "user_id": current_user['id']}),
+            timeout=5.0
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Database status query timed out")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error checking document status for {document_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch document status")
+
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found.")
+
     return DocumentResponse.from_mongo(doc)
 
 

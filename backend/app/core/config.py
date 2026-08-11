@@ -8,7 +8,8 @@ ENV_FILE_PATH = os.path.join(BASE_DIR, ".env")
 class Settings(BaseSettings):
     # App
     PORT: int = 8000
-    FRONTEND_URL: str = "http://localhost:5173"
+    FRONTEND_URL: str = ""
+    DEBUG: bool = False
     DOCUMENT_RETENTION_DAYS: int = 15
     ADMIN_SECRET: str = "ragify-secret-admin-token"
 
