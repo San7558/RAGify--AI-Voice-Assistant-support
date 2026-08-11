@@ -14,6 +14,7 @@ export function AuthProvider({ children }) {
   // Using a ref (not state) so toggling it never triggers a re-render that
   // could fire the login handler again.
   const loginInFlight = useRef(false)
+  const syncedUidRef = useRef(null)
 
   useEffect(() => {
     if (!auth) {
@@ -33,24 +34,27 @@ export function AuthProvider({ children }) {
       setUser(currentUser)
 
       if (currentUser) {
-        // Fix 6: keep loading=true until /auth/sync completes so the dashboard
-        // never mounts (and fires /api/dashboard/stats) before the user record
-        // exists in MongoDB. A race here causes a guaranteed 401 on first login.
+        // Prevent duplicate /auth/sync requests if already synced for this UID
+        if (syncedUidRef.current === currentUser.uid) {
+          setLoading(false)
+          return
+        }
+
         try {
           setSyncError(null)
           const token = await currentUser.getIdToken()
           await api.post('/auth/sync', {}, {
             headers: { Authorization: `Bearer ${token}` }
           })
+          syncedUidRef.current = currentUser.uid
         } catch (e) {
           console.error('Backend auth sync failed', e)
           setSyncError('Failed to sync account with server. Please refresh.')
         } finally {
-          // Only unblock the UI once sync has settled (success or failure)
           setLoading(false)
         }
       } else {
-        // No user logged in — unblock immediately
+        syncedUidRef.current = null
         setLoading(false)
       }
     })
