@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { Send, Loader2, Mic, MicOff } from 'lucide-react'
 import MessageBubble from './MessageBubble'
-import VoiceMode from './VoiceMode'
 import { transcribeAudio } from '../../services/api'
+
+const VoiceMode = lazy(() => import('./VoiceMode'))
 
 export default function ChatBox({ messages, isLoading, onSend, documentId }) {
   const [input, setInput] = useState('')
@@ -34,12 +35,16 @@ export default function ChatBox({ messages, isLoading, onSend, documentId }) {
   return (
     <div className="flex flex-col h-full bg-surface-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative">
       {/* Full-Screen / Centered Voice Mode Overlay */}
-      <VoiceMode
-        isOpen={isVoiceModeOpen}
-        onClose={() => setIsVoiceModeOpen(false)}
-        documentId={documentId}
-        onSendQuestion={handleVoiceSendQuestion}
-      />
+      <Suspense fallback={null}>
+        {isVoiceModeOpen && (
+          <VoiceMode
+            isOpen={isVoiceModeOpen}
+            onClose={() => setIsVoiceModeOpen(false)}
+            documentId={documentId}
+            onSendQuestion={handleVoiceSendQuestion}
+          />
+        )}
+      </Suspense>
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 no-scrollbar">

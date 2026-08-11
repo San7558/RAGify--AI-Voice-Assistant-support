@@ -45,6 +45,15 @@ api.interceptors.response.use(
   }
 )
 
+let isWarmedUp = false
+export const warmupBackend = () => {
+  if (isWarmedUp) return
+  isWarmedUp = true
+  api.get('/health', { timeout: 8000 }).catch(() => {
+    // Silent non-blocking warmup call
+  })
+}
+
 export const transcribeAudio = async (audioBlob) => {
   const formData = new FormData()
   const mimeType = audioBlob.type || 'audio/webm'
@@ -58,5 +67,6 @@ export const transcribeAudio = async (audioBlob) => {
 }
 
 api.transcribeAudio = transcribeAudio
+api.warmupBackend = warmupBackend
 
 export default api

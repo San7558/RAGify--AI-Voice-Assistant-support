@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import { auth, googleProvider } from '../services/firebase'
-import api from '../services/api'
+import api, { warmupBackend } from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -10,13 +10,13 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [syncError, setSyncError] = useState(null)
 
-  // Bug 1 fix: track whether a signInWithPopup call is already in flight.
-  // Using a ref (not state) so toggling it never triggers a re-render that
-  // could fire the login handler again.
   const loginInFlight = useRef(false)
   const syncedUidRef = useRef(null)
 
   useEffect(() => {
+    // Non-blocking single warmup request on app initialization
+    warmupBackend()
+
     if (!auth) {
       console.warn('Firebase auth not initialized (missing config?)')
       setLoading(false)
