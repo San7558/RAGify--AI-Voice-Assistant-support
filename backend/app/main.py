@@ -25,7 +25,12 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="RAGify AI Backend", debug=settings.DEBUG)
 
 def get_cors_origins():
-    origins = set()
+    origins = {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "https://ragify-ai-assistant.vercel.app"
+    }
     raw = settings.FRONTEND_URL
     if raw:
         for item in raw.split(","):
@@ -47,7 +52,13 @@ app.add_middleware(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+    origin = request.headers.get("origin", "")
+    allowed = get_cors_origins()
+    headers = {}
+    if origin in allowed:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"}, headers=headers)
 
 @app.on_event("startup")
 async def startup_db_client():

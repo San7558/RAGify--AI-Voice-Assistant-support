@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = ""
     DEBUG: bool = False
     DOCUMENT_RETENTION_DAYS: int = 15
-    ADMIN_SECRET: str = "ragify-secret-admin-token"
+    ADMIN_SECRET: str = "MA_mu9ADYelgiMew2Mt1WORBa6Mde3FofW5A7QH6G64"
 
     # MongoDB
     MONGODB_URI: str
@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "llama-3.1-8b-instant"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     HUGGINGFACE_API_KEY: str = ""
+    HUGGINGFACE_EMBEDDING_URL: str = ""
 
     class Config:
         env_file = (ENV_FILE_PATH, ".env")

@@ -98,19 +98,22 @@ async def ask_question(
 
     source_type = doc.get("source_type", "file")
     logging.info(
-        f"[chat] document_id={document_id} user_id={current_user['id']} "
+        f"CHAT_REQUEST_STARTED document_id={document_id} user_id={current_user['id']} "
         f"source_type={source_type} pinecone_namespace={document_id}"
     )
 
     # 2. Greeting short-circuit
     greetings = {"hi", "hello", "hey", "good morning", "good afternoon", "good evening"}
     if request.query.strip().lower() in greetings:
+        logging.info(f"CHAT_REQUEST_COMPLETED (greeting short-circuit) document_id={document_id}")
         return ChatResponse(
             answer="Hello! Ask me anything about this document.",
             sources=[]
         )
 
     # 3. Retrieval — namespace = str(document_id), filter = user_id only
+    logging.info(f"QUERY_EMBEDDING_STARTED document_id={document_id}")
+    logging.info(f"PINECONE_QUERY_STARTED document_id={document_id} namespace={document_id}")
     vectorstore = get_vectorstore(str(document_id))
     retriever = vectorstore.as_retriever(
         search_kwargs={
@@ -120,11 +123,34 @@ async def ask_question(
     )
 
     t0 = time.perf_counter()
-    retrieved_docs = await asyncio.to_thread(retriever.invoke, request.query)
-    logging.info(
-        f"[chat] retrieval elapsed={time.perf_counter()-t0:.2f}s "
-        f"matches={len(retrieved_docs)} namespace={document_id}"
-    )
+    try:
+        retrieved_docs = await asyncio.to_thread(retriever.invoke, request.query)
+        logging.info(
+            f"PINECONE_QUERY_COMPLETED document_id={document_id} elapsed={time.perf_counter()-t0:.2f}s "
+            f"matches={len(retrieved_docs)} namespace={document_id}"
+        )
+    except Exception as e:
+        logging.error(f"QUERY_EMBEDDING_FAILED or PINECONE_QUERY_FAILED for document {document_id}: {e}", exc_info=True)
+        # Classify embedding related runtime errors
+        if isinstance(e, RuntimeError):
+            error_code = str(e).strip()
+            if error_code == "EMBEDDING_NETWORK_ERROR":
+                detail_msg = "Embedding service network error: unable to reach Hugging Face API."
+            elif error_code == "EMBEDDING_AUTH_ERROR":
+                detail_msg = "Embedding service authentication error: invalid or missing HuggingFace API key."
+            elif error_code == "EMBEDDING_RATE_LIMITED":
+                detail_msg = "Embedding service rate limited. Please retry later."
+            elif error_code == "EMBEDDING_PROVIDER_ERROR":
+                detail_msg = "Embedding service provider error."
+            elif error_code == "EMBEDDING_INVALID_RESPONSE":
+                detail_msg = "Embedding service returned an invalid response."
+            elif error_code == "EMBEDDING_DIMENSION_MISMATCH":
+                detail_msg = "Embedding dimension mismatch from provider."
+            else:
+                detail_msg = "Embedding service unavailable."
+            raise HTTPException(status_code=502, detail=detail_msg) from e
+        # Fallback for other exceptions
+        raise HTTPException(status_code=502, detail="Embedding or vector retrieval service is currently unavailable. Please verify your connection or API key.") from e
 
     for idx, item in enumerate(retrieved_docs):
         meta = extract_document_metadata(item)
@@ -190,7 +216,7 @@ async def ask_question(
     human_content = request.query
 
     logging.info(
-        f"[chat] Calling Groq — model={settings.GROQ_MODEL} "
+        f"LLM_REQUEST_STARTED document_id={document_id} — model={settings.GROQ_MODEL} "
         f"system_len={len(system_content)} question={human_content!r}"
     )
 
@@ -209,7 +235,7 @@ async def ask_question(
             elapsed = time.perf_counter() - t1
             # response is an AIMessage; .content holds the text string
             answer = response.content if hasattr(response, "content") else str(response)
-            logging.info(f"[chat] Groq response elapsed={elapsed:.2f}s answer_len={len(answer or '')}")
+            logging.info(f"LLM_REQUEST_COMPLETED document_id={document_id} elapsed={elapsed:.2f}s answer_len={len(answer or '')}")
             if answer and answer.strip():
                 break
             else:
@@ -223,7 +249,7 @@ async def ask_question(
                 )
                 await asyncio.sleep(sleep_time)
             else:
-                logging.error(f"[chat] Groq non-retryable error: {e}", exc_info=True)
+                logging.error(f"LLM_REQUEST_FAILED document_id={document_id}: {e}", exc_info=True)
                 break
 
     if not answer or not answer.strip():
