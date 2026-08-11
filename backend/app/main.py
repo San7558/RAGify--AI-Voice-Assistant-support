@@ -1,3 +1,14 @@
+import sys
+import os
+
+# Ensure backend root and app package are in sys.path so both 'uvicorn app.main:app' and 'uvicorn main:app' work seamlessly
+app_dir = os.path.dirname(__file__)
+parent_dir = os.path.abspath(os.path.join(app_dir, ".."))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+if app_dir not in sys.path:
+    sys.path.insert(0, app_dir)
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -7,17 +18,29 @@ from app.db.mongo import connect_to_mongo, close_mongo_connection
 from app.services.firebase_service import init_firebase
 from app.routes import document_routes, chat_routes, dashboard_routes, auth_routes, user_routes, admin_routes, speech_routes
 
-
 # Initialize logger
 logger = logging.getLogger(__name__)
 
 # Enable debug mode for detailed tracebacks
 app = FastAPI(title="RAGify AI Backend", debug=True)
 
+def get_cors_origins():
+    origins = set()
+    raw = settings.FRONTEND_URL
+    if raw:
+        for item in raw.split(","):
+            cleaned = item.strip().rstrip("/")
+            if cleaned:
+                origins.add(cleaned)
+    origins.add("http://localhost:5173")
+    origins.add("http://localhost:3000")
+    origins.add("http://127.0.0.1:5173")
+    return list(origins)
+
 # CORS config
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,6 +60,10 @@ async def startup_db_client():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     await close_mongo_connection()
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "RAGify AI Backend API is running", "docs": "/docs"}
 
 @app.get("/api/health")
 async def health_check():

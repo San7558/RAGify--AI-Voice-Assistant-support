@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { auth } from './firebase'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL 
@@ -7,24 +8,38 @@ const api = axios.create({
   timeout: 30_000,
 })
 
-// Attach Firebase ID token to every request (Phase 2: real token)
+// Attach Firebase ID token to every request
 api.interceptors.request.use(async (config) => {
   try {
-    // Dynamically import to avoid circular deps; will be non-null after Phase 2
-    const { auth } = await import('./firebase')
-    if (auth?.currentUser) {
-      const token = await auth.currentUser.getIdToken()
-      config.headers['Authorization'] = `Bearer ${token}`
+    if (auth) {
+      if (typeof auth.authStateReady === 'function') {
+        await auth.authStateReady()
+      }
+      if (auth.currentUser) {
+        const token = await auth.currentUser.getIdToken()
+        config.headers['Authorization'] = `Bearer ${token}`
+      }
     }
-  } catch {
-    // no-op in Phase 1
+  } catch (err) {
+    console.error('Failed to attach Firebase ID token:', err)
   }
   return config
 })
 
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
+  async (err) => {
+    const originalRequest = err.config
+    if (err.response?.status === 401 && originalRequest && !originalRequest._retry && auth?.currentUser) {
+      originalRequest._retry = true
+      try {
+        const freshToken = await auth.currentUser.getIdToken(true)
+        originalRequest.headers['Authorization'] = `Bearer ${freshToken}`
+        return api(originalRequest)
+      } catch (refreshErr) {
+        console.error('Failed to refresh Firebase ID token:', refreshErr)
+      }
+    }
     const message = err.response?.data?.detail || err.message || 'An error occurred'
     return Promise.reject(new Error(message))
   }

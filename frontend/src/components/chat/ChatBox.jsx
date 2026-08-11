@@ -78,13 +78,18 @@ export default function ChatBox({ messages, isLoading, onSend, documentId }) {
           <p className="text-xs text-rose-400 mb-2 px-1">{speechError}</p>
         )}
         <form onSubmit={handleSubmit} className="relative flex items-center">
+          <img
+            src="/rag-icon.png"
+            alt="Search"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 object-contain pointer-events-none z-10"
+          />
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask a question..."
             disabled={isLoading}
-            className="w-full bg-surface-700 border border-white/10 rounded-xl pl-3.5 pr-28 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all disabled:opacity-50"
+            className="w-full bg-surface-700 border border-white/10 rounded-xl pl-11 pr-28 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all disabled:opacity-50"
           />
 
           <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">

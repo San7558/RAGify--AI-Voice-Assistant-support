@@ -2,6 +2,9 @@ import os
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+ENV_FILE_PATH = os.path.join(BASE_DIR, ".env")
+
 class Settings(BaseSettings):
     # App
     PORT: int = 8000
@@ -35,7 +38,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     class Config:
-        env_file = ".env"
+        env_file = (ENV_FILE_PATH, ".env")
         extra = "ignore"
 
     @field_validator("MONGO_TLS_INSECURE", mode="before")
