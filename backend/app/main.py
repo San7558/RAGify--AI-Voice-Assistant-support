@@ -51,8 +51,15 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 async def startup_db_client():
-    init_firebase()
-    await connect_to_mongo()
+    try:
+        init_firebase()
+    except Exception as e:
+        logger.error(f"Firebase initialization error during startup: {e}", exc_info=True)
+
+    try:
+        await connect_to_mongo()
+    except Exception as e:
+        logger.error(f"MongoDB connection error during startup: {e}", exc_info=True)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
