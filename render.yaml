@@ -3,7 +3,8 @@ services:
     name: ragify-backend
     env: python
     region: singapore # Change to preferred Render region (e.g. oregon, frankfurt)
-    buildCommand: pip install -r backend/requirements.txt
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
