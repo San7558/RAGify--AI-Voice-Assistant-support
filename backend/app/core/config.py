@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str
     GROQ_MODEL: str = "llama-3.1-8b-instant"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    HUGGINGFACE_API_KEY: str = ""
 
     class Config:
         env_file = (ENV_FILE_PATH, ".env")

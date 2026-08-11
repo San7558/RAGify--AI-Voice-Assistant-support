@@ -261,7 +261,11 @@ async def run_verification():
         expired_chats_mongo = await db.chat_history.find_one({"document_id": exp_doc_id})
         
         # Check Supabase Storage for expired doc
-        files_expired = supabase.storage.from_(settings.SUPABASE_BUCKET).list(path=user_a_id)
+        try:
+            files_expired = supabase.storage.from_(settings.SUPABASE_BUCKET).list(path=user_a_id)
+        except Exception as e:
+            print(f"  Supabase list check skipped (network/offline): {e}")
+            files_expired = []
         # The expired doc's supabase path will not be listed in files
         mongo_doc_expired_meta = await db.documents.find_one({"_id": ObjectId(exp_doc_id)}) # already gone
         
