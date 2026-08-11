@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 from app.core.config import settings
-from app.db.mongo import connect_to_mongo, close_mongo_connection
+from app.db.mongo import connect_to_mongo, close_mongo_connection, get_db
 from app.services.firebase_service import init_firebase
 from app.routes import document_routes, chat_routes, dashboard_routes, auth_routes, user_routes, admin_routes, speech_routes
 
