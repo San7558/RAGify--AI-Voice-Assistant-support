@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 backend_dir = r"c:\Users\ANUSHITHA R\OneDrive\Desktop\RAGify PROJECT\backend"
 sys.path.append(backend_dir)
 load_dotenv(os.path.join(backend_dir, ".env"), override=True)
+os.environ["ALLOW_LOCAL_EMBEDDING_FALLBACK"] = "true"
 
 # ── Mock Firebase before loading FastAPI ────────────────────────────────────
 import app.services.firebase_service
@@ -305,6 +306,22 @@ async def run_verification():
         except Exception as e:
             record("Supabase_Safe_Delete_No_UnboundLocalError", False, f"Supabase delete raised unexpected error: {e}")
         
+        # Test RemoteHuggingFaceEmbeddings embed_documents and embed_query
+        from app.rag.embeddings import get_embeddings
+        try:
+            embed_client = get_embeddings()
+            doc_embeds = embed_client.embed_documents(["Sample text 1", "Sample text 2"])
+            query_embed = embed_client.embed_query("Sample query")
+            
+            dim_docs_ok = len(doc_embeds) == 2 and all(len(emb) == 384 for emb in doc_embeds)
+            dim_query_ok = len(query_embed) == 384
+            
+            record("Embedding_Interface_384Dim_Verification", dim_docs_ok and dim_query_ok, 
+                   f"embed_documents count={len(doc_embeds)} (dims={[len(e) for e in doc_embeds]}), "
+                   f"embed_query dim={len(query_embed)} (expected 384)")
+        except Exception as e:
+            record("Embedding_Interface_384Dim_Verification", False, f"Embedding verification failed: {e}")
+
         # Clean up the keep document
         await client.delete(f"/api/documents/{keep_doc_id}", headers={"Authorization": "Bearer token_user_a"})
         

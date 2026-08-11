@@ -24,21 +24,21 @@ async def process_document(
     async with _processing_semaphore:
         try:
             logger.info(f"Processing document {document_id} ({file_name})")
+            logger.info("PDF extraction started")
             # Load
             docs = load_document(file_bytes, file_name, file_type)
             
             # Chunk
             chunks = chunk_documents(docs)
-            logger.info(f"Generated {len(chunks)} chunks for document {document_id}")
+            logger.info(f"Created {len(chunks)} chunks for document {document_id}")
             
-            # We need to run Pinecone operations (synchronous) in a threadpool if it blocks
-            # but the client usually uses requests. We'll wrap in an executor to be safe.
+            # Upsert vectors via ThreadPoolExecutor
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
                 None, 
                 upsert_chunks, chunks, user_id, document_id, file_name, source_type
             )
-            logging.info(f"Successfully upserted vectors for document {document_id}")
+            logger.info(f"Pinecone upsert completed for document {document_id}")
             
             # Update Mongo status
             await db.documents.update_one(
@@ -48,15 +48,21 @@ async def process_document(
                     "chunk_count": len(chunks)
                 }}
             )
+            logger.info(f"Document indexing completed for document {document_id}")
             
         except Exception as e:
-            logger.error(f"Error processing document {document_id}: {str(e)}")
+            err_msg = str(e)
+            if "Embedding service unavailable" in err_msg or "Hugging Face" in err_msg:
+                logger.error(f"Embedding service unavailable for document {document_id}: {err_msg}")
+            else:
+                logger.error(f"Error processing document {document_id}: {err_msg}")
+            
             # Mark as failed
             await db.documents.update_one(
                 {"_id": ObjectId(document_id)},
                 {"$set": {
                     "status": "failed",
-                    "error": str(e)
+                    "error": f"Embedding service unavailable: {err_msg}" if "Embedding service unavailable" in err_msg else err_msg
                 }}
             )
 
