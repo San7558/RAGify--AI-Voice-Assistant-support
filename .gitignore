@@ -1,5 +1,72 @@
-# Logs
-logs
+# ==========================================
+# RAGify AI - Comprehensive .gitignore
+# ==========================================
+
+# ------------------------------------------
+# Environment Secrets & Credentials
+# ------------------------------------------
+.env
+*.env
+backend/.env
+frontend/.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Preserve example environment templates
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# ------------------------------------------
+# Python Virtual Environments
+# ------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+backend/venv/
+backend/.venv/
+backend/env/
+
+# ------------------------------------------
+# Python Cache & Testing Artifacts
+# ------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+*.manifest
+*.spec
+
+# ------------------------------------------
+# Node.js & React/Vite Dependencies & Builds
+# ------------------------------------------
+node_modules/
+frontend/node_modules/
+dist/
+dist-ssr/
+frontend/dist/
+.vite/
+frontend/.vite/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# ------------------------------------------
+# Logs & Temporary Files
+# ------------------------------------------
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,43 +74,21 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Frontend
-node_modules/
-frontend/node_modules/
-dist/
-dist-ssr/
-frontend/dist/
-*.local
-
-# Python virtual environments
-venv/
-.venv/
-backend/venv/
-backend/.venv/
-
-# Python cache
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-
-# Environment secrets
-.env
-backend/.env
-frontend/.env
-
-# Keep example env files
-!.env.example
-!backend/.env.example
-!frontend/.env.example
-
-# Editor directories and files
-.vscode/*
+# ------------------------------------------
+# IDE & System Files
+# ------------------------------------------
+.vscode/
 !.vscode/extensions.json
 .idea/
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
