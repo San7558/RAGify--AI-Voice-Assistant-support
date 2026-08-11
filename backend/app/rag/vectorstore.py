@@ -66,7 +66,7 @@ def upsert_chunks(
     index = get_pinecone_index()
     embeddings = get_embeddings()
 
-    batch_size = 100
+    batch_size = 32
     for i in range(0, len(chunks), batch_size):
         batch = chunks[i:i + batch_size]
 
