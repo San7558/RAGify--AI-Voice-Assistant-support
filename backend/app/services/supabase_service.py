@@ -1,14 +1,13 @@
+import logging
 from supabase import create_client, Client
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 def get_supabase_client() -> Client:
     url = settings.SUPABASE_URL or ""
     if not url or not settings.SUPABASE_SERVICE_ROLE_KEY:
         raise ValueError("Supabase configuration is missing.")
-    # Fix 4: guard against the common misconfiguration where the URL includes
-    # a path suffix like /rest/v1/ or /storage/. The SDK must receive the bare
-    # project root URL (e.g. https://xxxx.supabase.co) or storage endpoints will
-    # return 404 with 'Invalid path specified in request URL'.
     bad_suffixes = ("/rest/v1", "/storage", "/auth")
     for suffix in bad_suffixes:
         if suffix in url:
@@ -27,21 +26,28 @@ async def upload_file(file_bytes: bytes, file_name: str, content_type: str) -> s
     
     # Upload to Supabase Storage
     try:
-        res = supabase.storage.from_(bucket).upload(
+        supabase.storage.from_(bucket).upload(
             path=file_name,
             file=file_bytes,
             file_options={"content-type": content_type}
         )
         return file_name
     except Exception as e:
-        raise ValueError(f"Supabase storage upload failed: {str(e)}")
+        raw_err = str(e) if str(e) else type(e).__name__
+        err_detail = "Storage network or URL configuration error" if "cannot access local variable" in raw_err else raw_err
+        logger.warning(f"Supabase storage upload failed for file '{file_name}': {err_detail}")
+        raise ValueError(f"Supabase storage upload failed: {err_detail}")
 
 def delete_file(file_name: str):
+    if not file_name:
+        return
     try:
         supabase = get_supabase_client()
         supabase.storage.from_(settings.SUPABASE_BUCKET).remove([file_name])
+        logger.info(f"Successfully deleted Supabase file '{file_name}'.")
     except Exception as e:
-        print(f"Error deleting file from Supabase: {e}")
+        err_detail = str(e) if str(e) else type(e).__name__
+        logger.warning(f"Failed to delete Supabase file '{file_name}': {err_detail}")
 
 def download_file(file_name: str) -> bytes:
     """
@@ -50,6 +56,10 @@ def download_file(file_name: str) -> bytes:
     re-scraping the live URL.
     """
     supabase = get_supabase_client()
-    response = supabase.storage.from_(settings.SUPABASE_BUCKET).download(file_name)
-    return response
+    try:
+        return supabase.storage.from_(settings.SUPABASE_BUCKET).download(file_name)
+    except Exception as e:
+        err_detail = str(e) if str(e) else type(e).__name__
+        logger.error(f"Failed to download Supabase file '{file_name}': {err_detail}")
+        raise ValueError(f"Supabase file download failed: {err_detail}")
 

@@ -109,15 +109,21 @@ def upsert_chunks(
 
 def delete_document_vectors(document_id: str):
     """
-    Delete ALL vectors that belong to this document.
-
-    Fix 1: Use namespace-based delete (delete_all=True, namespace=document_id).
-    This works on ALL Pinecone tiers — including free pod indexes — unlike
-    the old metadata-filter delete which is unsupported on starter indexes
-    and was confirmed to silently no-op.
+    Delete ALL vectors that belong to this document's Pinecone namespace.
+    If the namespace does not exist (404), treat as an idempotent no-op.
+    Unexpected errors are logged and raised.
     """
+    if not document_id:
+        return
     index = get_pinecone_index()
     try:
         index.delete(delete_all=True, namespace=document_id)
+        logger.info(f"Successfully deleted vectors for Pinecone namespace '{document_id}'.")
     except Exception as e:
-        print(f"Failed to delete vectors for document {document_id}: {e}")
+        err_str = str(e).lower()
+        status_code = getattr(e, "status", None) or getattr(e, "code", None)
+        if status_code in (404, 5) or "404" in err_str or "namespace not found" in err_str:
+            logger.info(f"Pinecone namespace '{document_id}' not found; vector deletion skipped (idempotent no-op).")
+        else:
+            logger.error(f"Unexpected error deleting vectors for Pinecone namespace '{document_id}': {e}")
+            raise e

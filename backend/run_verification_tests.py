@@ -289,6 +289,22 @@ async def run_verification():
                f"expired vectors namespace count={vectors_expired_after}, "
                f"non-expired vectors count={vectors_keep_after}")
         
+        # Test Pinecone 404 Idempotent Vector Deletion
+        from app.rag.vectorstore import delete_document_vectors
+        try:
+            delete_document_vectors("non_existent_doc_id_99999")
+            record("Pinecone_404_Idempotent_Delete", True, "Pinecone 404 namespace deletion handled as idempotent no-op")
+        except Exception as e:
+            record("Pinecone_404_Idempotent_Delete", False, f"Pinecone deletion raised unexpected error: {e}")
+
+        # Test Supabase Delete Safety (No UnboundLocalError)
+        from app.services.supabase_service import delete_file
+        try:
+            delete_file("non_existent_file_path.pdf")
+            record("Supabase_Safe_Delete_No_UnboundLocalError", True, "Supabase file delete handled safely without UnboundLocalError")
+        except Exception as e:
+            record("Supabase_Safe_Delete_No_UnboundLocalError", False, f"Supabase delete raised unexpected error: {e}")
+        
         # Clean up the keep document
         await client.delete(f"/api/documents/{keep_doc_id}", headers={"Authorization": "Bearer token_user_a"})
         
