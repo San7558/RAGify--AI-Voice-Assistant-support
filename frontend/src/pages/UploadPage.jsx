@@ -44,20 +44,54 @@ export default function UploadPage() {
   // Poll for document status if it's processing
   useEffect(() => {
     if (status !== 'processing' || !documentId) return
-    
-    const interval = setInterval(async () => {
+
+    let isMounted = true
+    let timerId = null
+    let failCount = 0
+    const maxFailures = 3
+    const controller = new AbortController()
+
+    const pollStatus = async () => {
+      if (!isMounted) return
       try {
-        const res = await api.get(`/documents/${documentId}`)
-        setStatus(res.data.status)
-        if (res.data.status === 'ready' || res.data.status === 'failed') {
-          clearInterval(interval)
+        const res = await api.get(`/documents/${documentId}`, {
+          signal: controller.signal,
+          timeout: 10000 // 10-second timeout for status polling checks
+        })
+        if (!isMounted) return
+
+        failCount = 0 // reset failure count on success
+        const nextStatus = res.data?.status
+        if (nextStatus) {
+          setStatus(nextStatus)
+        }
+
+        if (nextStatus === 'ready' || nextStatus === 'failed') {
+          return // Stop polling loop
         }
       } catch (err) {
-        console.error('Polling failed', err)
+        if (!isMounted || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return
+        failCount++
+        console.warn(`Document status poll attempt failed (${failCount}/${maxFailures}):`, err.message)
+        if (failCount >= maxFailures) {
+          console.error('Document status polling halted due to repeated connection/timeout failures.')
+          setStatus('failed')
+          return // Stop polling loop
+        }
       }
-    }, 2000)
-    
-    return () => clearInterval(interval)
+
+      if (isMounted) {
+        timerId = setTimeout(pollStatus, 3000)
+      }
+    }
+
+    timerId = setTimeout(pollStatus, 2000)
+
+    return () => {
+      isMounted = false
+      if (timerId) clearTimeout(timerId)
+      controller.abort()
+    }
   }, [status, documentId])
 
   return (
